@@ -1,5 +1,7 @@
 import com.android.build.api.dsl.androidLibrary
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -7,8 +9,9 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
-group = "io.github.kotlin"
-version = "1.0.0"
+group = "darcy.kmp.lib.storage"
+//artifact = "library"
+version = "1.0.1"
 
 kotlin {
     jvm()
@@ -31,14 +34,52 @@ kotlin {
             }
         }
     }
-    iosX64()
+//    iosX64()
     iosArm64()
     iosSimulatorArm64()
-    linuxX64()
+//    linuxX64()
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        outputModuleName = "library"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "library.js"
+                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
+                    static = (static ?: mutableListOf()).apply {
+                        // Serve sources to debug inside browser
+                        add(project.projectDir.path)
+                    }
+                }
+            }
+        }
+        binaries.library()
+    }
+
+    js {
+        outputModuleName = "library"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "library.js"
+                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
+                    static = (static ?: mutableListOf()).apply {
+                        // Serve sources to debug inside browser
+                        add(project.projectDir.path)
+                    }
+                }
+            }
+        }
+        binaries.library()
+    }
 
     sourceSets {
         commonMain.dependencies {
             //put your multiplatform dependencies here
+//            // DataStore library
+//            implementation("androidx.datastore:datastore:1.2.0")
+//            // The Preferences DataStore library
+//            implementation("androidx.datastore:datastore-preferences:1.2.0")
+            // 添加 multiplatform-settings 核心依赖
+            implementation(libs.multiplatform.settings)
         }
 
         commonTest.dependencies {
@@ -50,7 +91,11 @@ kotlin {
 mavenPublishing {
     publishToMavenCentral()
 
-    signAllPublications()
+    // 通过命令行参数或 gradle.properties 控制
+    val isReleaseBuild = project.findProperty("release") == "true"
+    if (isReleaseBuild) {
+        signAllPublications()
+    }
 
     coordinates(group.toString(), "library", version.toString())
 
